@@ -1,7 +1,58 @@
+#include <cstddef>
 #include <stdexcept>
 #include <vector>
 
-#include "game.h"
+#include <string>
+#define BOARD_SIZE 8
+
+enum PieceType {
+    PIECE_KING,
+    PIECE_QUEEN,
+    PIECE_BISHOP,
+    PIECE_KNIGHT,
+    PIECE_ROOK,
+    PIECE_PAWN,
+};
+
+enum Color {
+    COLOR_DARK,
+    COLOR_LIGHT,
+};
+
+struct Position {
+    char file;
+    char rank;
+
+    std::string to_string() {
+        std::string s;
+        s += file;
+        s += rank;
+        return s;
+    }
+};
+
+struct Piece {
+    PieceType type;
+    Color color;
+    Position init_position;
+};
+
+struct Square {
+    Position position;
+    Color color;
+    Piece *piece;
+};
+
+#define POSITION_ARRAY_APPEND(moves, square, file_offset, rank_offset)         \
+    if ((square.position.file - 'a' + (file_offset)) >= 0 &&                   \
+        (square.position.file - 'a' + (file_offset)) < BOARD_SIZE &&           \
+        (square.position.rank - '1' + (rank_offset)) >= 0 &&                   \
+        (square.position.rank - '1' + (rank_offset)) < BOARD_SIZE &&           \
+        !is_position_collides(square, file_offset, rank_offset)) {             \
+        (moves).push_back((Position){                                          \
+            .file = static_cast<char>(square.position.file + (file_offset)),   \
+            .rank = static_cast<char>(square.position.rank + (rank_offset))}); \
+    }
 
 Square board[BOARD_SIZE][BOARD_SIZE];
 
@@ -24,64 +75,74 @@ char get_piece_char(Piece *piece) {
     return '\0';
 }
 
-std::vector<Position> get_knight_moves(Position position) {
+bool is_position_collides(Square square, int file_offset, int rank_offset) {
+    Square next_square = board[square.position.file - 'a' + file_offset]
+                              [square.position.rank - '1' + rank_offset];
+    if (next_square.piece != NULL &&
+        next_square.piece->color == square.piece->color) {
+        return true;
+    }
+    return false;
+}
+
+std::vector<Position> get_knight_moves(Square square) {
     std::vector<Position> moves;
-    POSITION_ARRAY_APPEND(moves, position, 2, 1);
-    POSITION_ARRAY_APPEND(moves, position, 2, -1);
-    POSITION_ARRAY_APPEND(moves, position, -2, 1);
-    POSITION_ARRAY_APPEND(moves, position, -2, -1);
-    POSITION_ARRAY_APPEND(moves, position, 1, 2);
-    POSITION_ARRAY_APPEND(moves, position, 1, -2);
-    POSITION_ARRAY_APPEND(moves, position, -1, 2);
-    POSITION_ARRAY_APPEND(moves, position, -1, -2);
+    POSITION_ARRAY_APPEND(moves, square, 2, 1);
+    POSITION_ARRAY_APPEND(moves, square, 2, -1);
+    POSITION_ARRAY_APPEND(moves, square, -2, 1);
+    POSITION_ARRAY_APPEND(moves, square, -2, -1);
+    POSITION_ARRAY_APPEND(moves, square, 1, 2);
+    POSITION_ARRAY_APPEND(moves, square, 1, -2);
+    POSITION_ARRAY_APPEND(moves, square, -1, 2);
+    POSITION_ARRAY_APPEND(moves, square, -1, -2);
     return moves;
 }
 
-std::vector<Position> get_rook_moves(Position position) {
+std::vector<Position> get_rook_moves(Square square) {
     std::vector<Position> moves = {};
     for (int offset = 1; offset < BOARD_SIZE; offset++) {
-        POSITION_ARRAY_APPEND(moves, position, -offset, 0);
-        POSITION_ARRAY_APPEND(moves, position, offset, 0);
-        POSITION_ARRAY_APPEND(moves, position, 0, -offset);
-        POSITION_ARRAY_APPEND(moves, position, 0, offset);
+        POSITION_ARRAY_APPEND(moves, square, -offset, 0);
+        POSITION_ARRAY_APPEND(moves, square, offset, 0);
+        POSITION_ARRAY_APPEND(moves, square, 0, -offset);
+        POSITION_ARRAY_APPEND(moves, square, 0, offset);
     }
     return moves;
 }
 
-std::vector<Position> get_bishop_moves(Position position) {
+std::vector<Position> get_bishop_moves(Square square) {
     std::vector<Position> moves = {};
     for (int offset = 1; offset < BOARD_SIZE; offset++) {
-        POSITION_ARRAY_APPEND(moves, position, offset, offset);
-        POSITION_ARRAY_APPEND(moves, position, offset, -offset);
-        POSITION_ARRAY_APPEND(moves, position, -offset, offset);
-        POSITION_ARRAY_APPEND(moves, position, -offset, -offset);
+        POSITION_ARRAY_APPEND(moves, square, offset, offset);
+        POSITION_ARRAY_APPEND(moves, square, offset, -offset);
+        POSITION_ARRAY_APPEND(moves, square, -offset, offset);
+        POSITION_ARRAY_APPEND(moves, square, -offset, -offset);
     }
     return moves;
 }
 
-std::vector<Position> get_queen_moves(Position position) {
+std::vector<Position> get_queen_moves(Square square) {
     std::vector<Position> moves = {};
-    std::vector<Position> knight_moves = get_knight_moves(position);
+    std::vector<Position> knight_moves = get_knight_moves(square);
     for (int i = 0; i < knight_moves.size(); i++) {
         moves.push_back(knight_moves[i]);
     }
-    std::vector<Position> bishop_moves = get_knight_moves(position);
+    std::vector<Position> bishop_moves = get_knight_moves(square);
     for (int i = 0; i < bishop_moves.size(); i++) {
         moves.push_back(bishop_moves[i]);
     }
     return moves;
 }
 
-std::vector<Position> get_king_moves(Position position) {
+std::vector<Position> get_king_moves(Square square) {
     std::vector<Position> moves = {};
-    POSITION_ARRAY_APPEND(moves, position, 1, 0);
-    POSITION_ARRAY_APPEND(moves, position, -1, 0);
-    POSITION_ARRAY_APPEND(moves, position, 0, 1);
-    POSITION_ARRAY_APPEND(moves, position, 0, -1);
-    POSITION_ARRAY_APPEND(moves, position, 1, 1);
-    POSITION_ARRAY_APPEND(moves, position, -1, -1);
-    POSITION_ARRAY_APPEND(moves, position, 1, -1);
-    POSITION_ARRAY_APPEND(moves, position, -1, 1);
+    POSITION_ARRAY_APPEND(moves, square, 1, 0);
+    POSITION_ARRAY_APPEND(moves, square, -1, 0);
+    POSITION_ARRAY_APPEND(moves, square, 0, 1);
+    POSITION_ARRAY_APPEND(moves, square, 0, -1);
+    POSITION_ARRAY_APPEND(moves, square, 1, 1);
+    POSITION_ARRAY_APPEND(moves, square, -1, -1);
+    POSITION_ARRAY_APPEND(moves, square, 1, -1);
+    POSITION_ARRAY_APPEND(moves, square, -1, 1);
     return moves;
 }
 
@@ -89,19 +150,19 @@ std::vector<Position> get_valid_moves(Square square) {
     std::vector<Position> positions;
     switch (square.piece->type) {
     case PIECE_KING:
-        positions = get_king_moves(square.position);
+        positions = get_king_moves(square);
         break;
     case PIECE_QUEEN:
-        positions = get_queen_moves(square.position);
+        positions = get_queen_moves(square);
         break;
     case PIECE_BISHOP:
-        positions = get_bishop_moves(square.position);
+        positions = get_bishop_moves(square);
         break;
     case PIECE_KNIGHT:
-        positions = get_knight_moves(square.position);
+        positions = get_knight_moves(square);
         break;
     case PIECE_ROOK:
-        positions = get_rook_moves(square.position);
+        positions = get_rook_moves(square);
         break;
     case PIECE_PAWN:
         throw std::logic_error("Not implemented");
